@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stock Cockpit Pro v5.3</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            margin: 0;
+            background: #121212;
+            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+        header {
+            padding: 15px;
+            background: #1f1f1f;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title {
+            font-weight: bold;
+            font-size: 16px;
+            letter-spacing: 1px;
+            color: #4a90e2;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            padding: 8px;
+            width: 100%;
+        }
+        .card {
+            background: #1f1f1f;
+            border-radius: 12px;
+            padding: 10px;
+            height: 260px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #333;
+            overflow: hidden;
+        }
+        .info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-size: 11px;
+            margin-bottom: 5px;
+            color: #4a90e2;
+            font-weight: bold;
+        }
+        .stock-label {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+            text-decoration: none; /* リンクの下線を消す */
+        }
+        .stock-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #4a90e2; /* クリックできることがわかるように青色に */
+            font-size: 12px;
+        }
+        .stock-symbol {
+            font-size: 9px;
+            color: #888;
+        }
+        .remove-btn {
+            color: #555;
+            font-size: 20px;
+            line-height: 1;
+            padding: 0 5px;
+            cursor: pointer;
+        }
+        .chart-box {
+            flex-grow: 1;
+            position: relative;
+            min-height: 0;
+            width: 100%;
+        }
+        .timeframe-selector {
+            display: flex;
+            gap: 2px;
+            margin-top: 10px;
+            background: #121212;
+            padding: 2px;
+            border-radius: 6px;
+        }
+        .time-btn {
+            flex: 1;
+            border: none;
+            background: none;
+            color: #666;
+            font-size: 10px;
+            padding: 7px 0;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+        .time-btn.active {
+            background-color: #333;
+            color: #fff;
+            font-weight: bold;
+        }
+        /* モーダル */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 200;
+            padding: 20px;
+        }
+        .modal-content {
+            background: #1f1f1f;
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #444;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #4a90e2;
+            background: #121212;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 10px;
+            outline: none;
+        }
+        .candidate-item {
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .candidate-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .candidate-detail {
+            font-size: 11px;
+            color: #888;
+        }
+        .btn-close {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .add-btn-main {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 15px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .loading-text {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <header>
+        <div class="header-title">COCKPIT v5.3</div>
+        <button class="add-btn-main" @click="openSearch">＋ 検索追加</button>
+    </header>
+
+    <div class="grid">
+        <div v-for="(stock, index) in stocks" :key="index" class="card">
+            <div class="info">
+                <a :href="getYahooUrl(stock.symbol)" target="_blank" class="stock-label">
+                    <span class="stock-name">{{ stock.name }}</span>
+                    <span class="stock-symbol">{{ stock.symbol }}</span>
+                </a>
+                <div class="remove-btn" @click="removeStock(index)">×</div>
+            </div>
+            
+            <div class="chart-box">
+                <canvas :id="'chart-' + index"></canvas>
+            </div>
+
+            <div class="timeframe-selector">
+                <button v-for="tf in timeframes" :key="tf.id" 
+                        class="time-btn" :class="{ active: stock.range === tf.range }"
+                        @click="updateRange(index, tf.range, tf.interval)">
+                    {{ tf.label }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="isModalOpen" class="modal" @click.self="isModalOpen = false">
+        <div class="modal-content">
+            <input type="text" class="search-input" v-model="searchQuery" @input="onSearchInput" placeholder="銘柄名、コード、指数...">
+            <div v-if="isSearching" class="loading-text">Yahoo Financeを検索中...</div>
+            <div v-for="res in searchResults" :key="res.symbol" class="candidate-item">
+                <div style="display:flex; flex-direction:column; max-width: 70%;">
+                    <span class="candidate-name">{{ res.shortname || res.longname || res.symbol }}</span>
+                    <span class="candidate-detail">{{ res.symbol }} | {{ res.exchDisp }}</span>
+                </div>
+                <button class="add-btn-main" style="padding: 5px 10px; font-size: 11px;" @click="addStock(res)">追加</button>
+            </div>
+            <button class="btn-close" @click="isModalOpen = false">キャンセル</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const { createApp, onMounted, ref, nextTick } = Vue;
+
+createApp({
+    setup() {
+        const isModalOpen = ref(false);
+        const searchQuery = ref('');
+        const searchResults = ref([]);
+        const isSearching = ref(false);
+        
+        const stocks = ref([
+            { symbol: '7203.T', name: 'トヨタ自動車', range: '1d', interval: '5m', chart: null },
+            { symbol: '^N225', name: '日経平均', range: '1d', interval: '5m', chart: null },
+            { symbol: 'AAPL', name: 'Apple', range: '1d', interval: '5m', chart: null },
+            { symbol: 'BTC-USD', name: 'Bitcoin', range: '1d', interval: '5m', chart: null }
+        ]);
+
+        const timeframes = [
+            { id: '1d', label: '1日', range: '1d', interval: '5m' },
+            { id: '1w', label: '1週', range: '5d', interval: '30m' },
+            { id: '1m', label: '1月', range: '1mo', interval: '1d' }
+        ];
+
+        // YahooファイナンスのURLを生成する関数
+        const getYahooUrl = (symbol) => {
+            // 日本株(数字4桁.T)の場合とそれ以外でリンク先を分ける
+            if (symbol.endsWith('.T')) {
+                const code = symbol.replace('.T', '');
+                return `https://finance.yahoo.co.jp/quote/${code}.T`;
+            }
+            // 米国株や指数
+            return `https://finance.yahoo.co.jp/quote/${symbol}`;
+        };
+
+        let searchTimeout = null;
+        const onSearchInput = () => {
+            clearTimeout(searchTimeout);
+            if (!searchQuery.value) { searchResults.value = []; return; }
+            searchTimeout = setTimeout(async () => {
+                isSearching.value = true;
+                try {
+                    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(searchQuery.value)}&quotesCount=10&newsCount=0`;
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    const res = await fetch(proxyUrl);
+                    const json = await res.json();
+                    searchResults.value = json.quotes || [];
+                } catch (e) {
+                    console.error("Search API Error", e);
+                } finally {
+                    isSearching.value = false;
+                }
+            }, 500);
+        };
+
+        const fetchAndRender = async (index) => {
+            const stock = stocks.value[index];
+            if (!stock) return;
+            try {
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${stock.symbol}?range=${stock.range}&interval=${stock.interval}`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                const res = await fetch(proxyUrl);
+                const json = await res.json();
+                if (!json.chart.result) throw new Error("No data");
+                const result = json.chart.result[0];
+                const quotes = result.indicators.quote[0].close;
+                const labels = result.timestamp.map(t => {
+                    const d = new Date(t * 1000);
+                    return stock.range === '1d' ? `${d.getHours()}:${d.getMinutes()}` : `${d.getMonth()+1}/${d.getDate()}`;
+                });
+
+                if (stock.chart) stock.chart.destroy();
+                await nextTick();
+                const ctx = document.getElementById('chart-' + index).getContext('2d');
+                stock.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: quotes,
+                            borderColor: '#4a90e2',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false },
+                            y: {
+                                grid: { color: '#2a2a2a' },
+                                ticks: { color: '#888', font: { size: 9 }, maxTicksLimit: 5 }
+                            }
+                        }
+                    }
+                });
+            } catch (e) { console.error("Chart Render Error", e); }
+        };
+
+        const addStock = (res) => {
+            const newIndex = stocks.value.length;
+            stocks.value.push({
+                symbol: res.symbol,
+                name: res.shortname || res.symbol,
+                range: '1d',
+                interval: '5m',
+                chart: null
+            });
+            isModalOpen.value = false;
+            searchQuery.value = '';
+            searchResults.value = [];
+            nextTick(() => { fetchAndRender(newIndex); });
+        };
+
+        const updateRange = (index, range, interval) => {
+            stocks.value[index].range = range;
+            stocks.value[index].interval = interval;
+            fetchAndRender(index);
+        };
+
+        const openSearch = () => { isModalOpen.value = true; };
+        const removeStock = (n) => {
+            if (stocks.value[n].chart) stocks.value[n].chart.destroy();
+            stocks.value.splice(n, 1);
+            nextTick(() => { stocks.value.forEach((_, i) => fetchAndRender(i)); });
+        };
+
+        onMounted(() => { stocks.value.forEach((_, i) => fetchAndRender(i)); });
+
+        return {
+            stocks, isModalOpen, searchQuery, searchResults, isSearching, getYahooUrl,
+            timeframes, onSearchInput, addStock, updateRange, openSearch, removeStock
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
