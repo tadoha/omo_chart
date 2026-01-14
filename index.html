@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Omo Chart v1.0</title>
+    <title>Omo Chart v1.1</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -65,13 +65,13 @@
             display: flex;
             flex-direction: column;
             max-width: 80%;
-            text-decoration: none; /* リンクの下線を消す */
+            text-decoration: none;
         }
         .stock-name {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            color: #4a90e2; /* クリックできることがわかるように青色に */
+            color: #4a90e2;
             font-size: 12px;
         }
         .stock-symbol {
@@ -114,7 +114,6 @@
             color: #fff;
             font-weight: bold;
         }
-        /* モーダル */
         .modal {
             position: fixed;
             top: 0;
@@ -192,7 +191,7 @@
 <body>
 <div id="app">
     <header>
-        <div class="header-title">COCKPIT v5.3</div>
+        <div class="header-title">COCKPIT v5.4</div>
         <button class="add-btn-main" @click="openSearch">＋ 検索追加</button>
     </header>
 
@@ -245,13 +244,17 @@ createApp({
         const searchQuery = ref('');
         const searchResults = ref([]);
         const isSearching = ref(false);
+        const STORAGE_KEY = 'my_stock_cockpit_data';
         
-        const stocks = ref([
+        // 初回起動時のデフォルト
+        const defaultStocks = [
             { symbol: '7203.T', name: 'トヨタ自動車', range: '1d', interval: '5m', chart: null },
             { symbol: '^N225', name: '日経平均', range: '1d', interval: '5m', chart: null },
             { symbol: 'AAPL', name: 'Apple', range: '1d', interval: '5m', chart: null },
             { symbol: 'BTC-USD', name: 'Bitcoin', range: '1d', interval: '5m', chart: null }
-        ]);
+        ];
+
+        const stocks = ref([]);
 
         const timeframes = [
             { id: '1d', label: '1日', range: '1d', interval: '5m' },
@@ -259,14 +262,34 @@ createApp({
             { id: '1m', label: '1月', range: '1mo', interval: '1d' }
         ];
 
-        // YahooファイナンスのURLを生成する関数
+        // データの保存
+        const saveToStorage = () => {
+            const dataToSave = stocks.value.map(s => ({
+                symbol: s.symbol,
+                name: s.name,
+                range: s.range,
+                interval: s.interval
+            }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        };
+
+        // データの読み込み
+        const loadFromStorage = () => {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // chartオブジェクトを初期化してセット
+                stocks.value = parsed.map(s => ({ ...s, chart: null }));
+            } else {
+                stocks.value = [...defaultStocks];
+            }
+        };
+
         const getYahooUrl = (symbol) => {
-            // 日本株(数字4桁.T)の場合とそれ以外でリンク先を分ける
             if (symbol.endsWith('.T')) {
                 const code = symbol.replace('.T', '');
                 return `https://finance.yahoo.co.jp/quote/${code}.T`;
             }
-            // 米国株や指数
             return `https://finance.yahoo.co.jp/quote/${symbol}`;
         };
 
@@ -282,11 +305,8 @@ createApp({
                     const res = await fetch(proxyUrl);
                     const json = await res.json();
                     searchResults.value = json.quotes || [];
-                } catch (e) {
-                    console.error("Search API Error", e);
-                } finally {
-                    isSearching.value = false;
-                }
+                } catch (e) { console.error("Search Error", e); }
+                finally { isSearching.value = false; }
             }, 500);
         };
 
@@ -336,11 +356,10 @@ createApp({
                         }
                     }
                 });
-            } catch (e) { console.error("Chart Render Error", e); }
+            } catch (e) { console.error("Chart Error", e); }
         };
 
         const addStock = (res) => {
-            const newIndex = stocks.value.length;
             stocks.value.push({
                 symbol: res.symbol,
                 name: res.shortname || res.symbol,
@@ -348,26 +367,35 @@ createApp({
                 interval: '5m',
                 chart: null
             });
+            saveToStorage(); // 保存
             isModalOpen.value = false;
             searchQuery.value = '';
             searchResults.value = [];
-            nextTick(() => { fetchAndRender(newIndex); });
+            nextTick(() => { fetchAndRender(stocks.value.length - 1); });
         };
 
         const updateRange = (index, range, interval) => {
             stocks.value[index].range = range;
             stocks.value[index].interval = interval;
+            saveToStorage(); // 期間設定も保存
             fetchAndRender(index);
         };
 
         const openSearch = () => { isModalOpen.value = true; };
+        
         const removeStock = (n) => {
             if (stocks.value[n].chart) stocks.value[n].chart.destroy();
             stocks.value.splice(n, 1);
+            saveToStorage(); // 保存
             nextTick(() => { stocks.value.forEach((_, i) => fetchAndRender(i)); });
         };
 
-        onMounted(() => { stocks.value.forEach((_, i) => fetchAndRender(i)); });
+        onMounted(() => {
+            loadFromStorage(); // 起動時に読み込み
+            nextTick(() => {
+                stocks.value.forEach((_, i) => fetchAndRender(i));
+            });
+        });
 
         return {
             stocks, isModalOpen, searchQuery, searchResults, isSearching, getYahooUrl,
