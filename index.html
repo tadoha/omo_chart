@@ -14,139 +14,54 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
-            margin: 0;
-            background: #121212;
-            color: #eee;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow-x: hidden;
-            padding-top: env(safe-area-inset-top);
+            margin: 0; background: #121212; color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow-x: hidden; padding-top: env(safe-area-inset-top);
         }
         header {
-            padding: 15px;
-            background: #1f1f1f;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #333;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            padding: 15px; background: #1f1f1f; display: flex;
+            justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 100;
         }
-        .header-title {
-            font-weight: bold;
-            font-size: 18px;
-            letter-spacing: 1px;
-            color: #fff; /* 名前を白に */
-        }
+        .header-title { font-weight: bold; font-size: 18px; color: #fff; }
         .grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            padding: 8px;
-            width: 100%;
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 8px; padding: 8px; width: 100%;
         }
         .card {
-            background: #1f1f1f;
-            border-radius: 12px;
-            padding: 10px;
-            height: 260px;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid #333;
-            overflow: hidden;
+            background: #1f1f1f; border-radius: 12px; padding: 10px;
+            height: 260px; display: flex; flex-direction: column;
+            border: 1px solid #333; overflow: hidden;
         }
-        .info {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            font-size: 11px;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .stock-label {
-            display: flex;
-            flex-direction: column;
-            max-width: 80%;
-            text-decoration: none;
-        }
-        .stock-name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            color: #fff; /* 銘柄名も白に */
-            font-size: 12px;
-        }
-        .stock-symbol {
-            font-size: 9px;
-            color: #888;
-        }
-        .remove-btn {
-            color: #555;
-            font-size: 20px;
-            line-height: 1;
-            padding: 0 5px;
-            cursor: pointer;
-        }
-        .chart-box {
-            flex-grow: 1;
-            position: relative;
-            min-height: 0;
-            width: 100%;
-        }
-        .timeframe-selector {
-            display: flex;
-            gap: 2px;
-            margin-top: 10px;
-            background: #121212;
-            padding: 2px;
-            border-radius: 6px;
-        }
-        .time-btn {
-            flex: 1;
-            border: none;
-            background: none;
-            color: #666;
-            font-size: 10px;
-            padding: 7px 0;
-            border-radius: 4px;
-            transition: 0.2s;
-        }
-        .time-btn.active {
-            background-color: #333;
-            color: #fff;
-            font-weight: bold;
-        }
+        .info { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .stock-label { display: flex; flex-direction: column; text-decoration: none; max-width: 80%; }
+        .stock-name { color: #fff; font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stock-symbol { font-size: 9px; color: #888; }
+        .remove-btn { color: #555; font-size: 20px; cursor: pointer; padding: 0 5px; }
+        .chart-box { flex-grow: 1; position: relative; width: 100%; }
+        .timeframe-selector { display: flex; gap: 2px; margin-top: 10px; background: #121212; padding: 2px; border-radius: 6px; }
+        .time-btn { flex: 1; border: none; background: none; color: #666; font-size: 10px; padding: 7px 0; border-radius: 4px; }
+        .time-btn.active { background: #333; color: #fff; font-weight: bold; }
+        
+        /* 検索モーダル */
         .modal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 200; padding: 20px;
-            padding-top: env(safe-area-inset-top);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 200; padding: 20px;
+            display: flex; align-items: flex-start; justify-content: center;
         }
         .modal-content {
             background: #1f1f1f; border-radius: 15px; padding: 20px;
-            border: 1px solid #444; max-height: 80vh; overflow-y: auto;
-            width: 100%; max-width: 500px; margin: 0 auto;
+            border: 1px solid #444; width: 100%; max-width: 500px; margin-top: 50px;
         }
         .search-input {
-            width: 100%; padding: 15px; border-radius: 10px;
-            border: 2px solid #eee; background: #121212; color: white;
-            font-size: 16px; margin-bottom: 10px; outline: none;
+            width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #eee;
+            background: #121212; color: white; font-size: 16px; outline: none;
         }
-        .add-btn-main {
-            background: #eee; color: #111; border: none; border-radius: 6px;
-            padding: 8px 15px; font-weight: bold; font-size: 13px;
-        }
+        .add-btn-main { background: #eee; color: #111; border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; font-size: 13px; }
         .candidate-item { padding: 12px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .candidate-name { font-size: 14px; font-weight: bold; color: #fff; }
-        .candidate-detail { font-size: 11px; color: #888; }
         .btn-close { background: #333; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; margin-top: 15px; }
-        .loading-text { text-align: center; color: #888; font-size: 12px; padding: 20px; }
     </style>
 </head>
 <body>
@@ -181,13 +96,13 @@
     <div v-if="isModalOpen" class="modal" @click.self="isModalOpen = false">
         <div class="modal-content">
             <input type="text" class="search-input" v-model="searchQuery" @input="onSearchInput" placeholder="銘柄名、コード、指数...">
-            <div v-if="isSearching" class="loading-text">検索中...</div>
+            <div v-if="isSearching" style="text-align:center; padding:10px; color:#888;">検索中...</div>
             <div v-for="res in searchResults" :key="res.symbol" class="candidate-item">
-                <div style="display:flex; flex-direction:column; max-width: 70%;">
-                    <span class="candidate-name">{{ res.shortname || res.longname || res.symbol }}</span>
-                    <span class="candidate-detail">{{ res.symbol }} | {{ res.exchDisp }}</span>
+                <div style="display:flex; flex-direction:column;">
+                    <span style="color:#fff; font-weight:bold; font-size:14px;">{{ res.shortname || res.symbol }}</span>
+                    <span style="color:#888; font-size:11px;">{{ res.symbol }}</span>
                 </div>
-                <button class="add-btn-main" style="padding: 5px 10px; font-size: 11px;" @click="addStock(res)">追加</button>
+                <button class="add-btn-main" style="padding:5px 10px; font-size:11px;" @click="addStock(res)">追加</button>
             </div>
             <button class="btn-close" @click="isModalOpen = false">キャンセル</button>
         </div>
@@ -203,15 +118,8 @@ createApp({
         const searchQuery = ref('');
         const searchResults = ref([]);
         const isSearching = ref(false);
-        const STORAGE_KEY = 'omo_chart_data';
+        const STORAGE_KEY = 'omo_chart_v57';
         
-        const defaultStocks = [
-            { symbol: '7203.T', name: 'トヨタ自動車', range: '1d', interval: '5m', chart: null },
-            { symbol: '^N225', name: '日経平均', range: '1d', interval: '5m', chart: null },
-            { symbol: 'AAPL', name: 'Apple', range: '1d', interval: '5m', chart: null },
-            { symbol: 'BTC-USD', name: 'Bitcoin', range: '1d', interval: '5m', chart: null }
-        ];
-
         const stocks = ref([]);
         const timeframes = [
             { id: '1d', label: '1日', range: '1d', interval: '5m' },
@@ -220,32 +128,37 @@ createApp({
         ];
 
         const saveToStorage = () => {
-            const dataToSave = stocks.value.map(s => ({
-                symbol: s.symbol, name: s.name, range: s.range, interval: s.interval
-            }));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+            const data = stocks.value.map(s => ({ symbol: s.symbol, name: s.name, range: s.range, interval: s.interval }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         };
 
         const loadFromStorage = () => {
             const saved = localStorage.getItem(STORAGE_KEY);
-            stocks.value = saved ? JSON.parse(saved).map(s => ({ ...s, chart: null })) : [...defaultStocks];
+            if (saved) {
+                stocks.value = JSON.parse(saved).map(s => ({ ...s, chart: null }));
+            } else {
+                stocks.value = [
+                    { symbol: '7203.T', name: 'トヨタ自動車', range: '1d', interval: '5m', chart: null },
+                    { symbol: '^N225', name: '日経平均', range: '1d', interval: '5m', chart: null },
+                    { symbol: 'AAPL', name: 'Apple', range: '1d', interval: '5m', chart: null },
+                    { symbol: 'BTC-USD', name: 'Bitcoin', range: '1d', interval: '5m', chart: null }
+                ];
+            }
         };
 
         const getYahooUrl = (symbol) => {
-            if (symbol.endsWith('.T')) {
-                return `https://finance.yahoo.co.jp/quote/${symbol.replace('.T', '')}.T`;
-            }
-            return `https://finance.yahoo.co.jp/quote/${symbol}`;
+            const code = symbol.replace('.T', '');
+            return symbol.endsWith('.T') ? `https://finance.yahoo.co.jp/quote/${code}.T` : `https://finance.yahoo.co.jp/quote/${symbol}`;
         };
 
-        let searchTimeout = null;
+        let timeout = null;
         const onSearchInput = () => {
-            clearTimeout(searchTimeout);
+            clearTimeout(timeout);
             if (!searchQuery.value) { searchResults.value = []; return; }
-            searchTimeout = setTimeout(async () => {
+            timeout = setTimeout(async () => {
                 isSearching.value = true;
                 try {
-                    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(searchQuery.value)}&quotesCount=10&newsCount=0`;
+                    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(searchQuery.value)}&quotesCount=10`;
                     const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
                     const json = await res.json();
                     searchResults.value = json.quotes || [];
@@ -256,4 +169,67 @@ createApp({
 
         const fetchAndRender = async (index) => {
             const stock = stocks.value[index];
-            if (!stock)
+            if (!stock) return;
+            try {
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${stock.symbol}?range=${stock.range}&interval=${stock.interval}`;
+                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+                const json = await res.json();
+                const result = json.chart.result[0];
+                const quotes = result.indicators.quote[0].close;
+                const labels = result.timestamp.map(t => {
+                    const d = new Date(t * 1000);
+                    return stock.range === '1d' ? `${d.getHours()}:${d.getMinutes()}` : `${d.getMonth()+1}/${d.getDate()}`;
+                });
+
+                if (stock.chart) stock.chart.destroy();
+                await nextTick();
+                const ctx = document.getElementById('chart-' + index).getContext('2d');
+                stock.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{ data: quotes, borderColor: '#ffffff', borderWidth: 2, pointRadius: 0, tension: 0.1, fill: false }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { display: false }, y: { grid: { color: '#2a2a2a' }, ticks: { color: '#888', font: { size: 9 }, maxTicksLimit: 5 } } }
+                    }
+                });
+            } catch (e) { console.error(e); }
+        };
+
+        const addStock = (res) => {
+            stocks.value.push({ symbol: res.symbol, name: res.shortname || res.symbol, range: '1d', interval: '5m', chart: null });
+            saveToStorage();
+            isModalOpen.value = false;
+            searchQuery.value = '';
+            searchResults.value = [];
+            nextTick(() => fetchAndRender(stocks.value.length - 1));
+        };
+
+        const removeStock = (n) => {
+            if (stocks.value[n].chart) stocks.value[n].chart.destroy();
+            stocks.value.splice(n, 1);
+            saveToStorage();
+            nextTick(() => stocks.value.forEach((_, i) => fetchAndRender(i)));
+        };
+
+        const updateRange = (index, range, interval) => {
+            stocks.value[index].range = range;
+            stocks.value[index].interval = interval;
+            saveToStorage();
+            fetchAndRender(index);
+        };
+
+        onMounted(() => {
+            loadFromStorage();
+            nextTick(() => stocks.value.forEach((_, i) => fetchAndRender(i)));
+        });
+
+        return { stocks, isModalOpen, searchQuery, searchResults, isSearching, getYahooUrl, timeframes, onSearchInput, addStock, updateRange, removeStock, openSearch: () => isModalOpen.value = true };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
