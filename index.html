@@ -2,232 +2,170 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Omo Chart</title>
-
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Omo Chart">
-    
-    <link rel="apple-touch-icon" href="icon.png">
-
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
+        :root { --bg: #121212; --card: #1f1f1f; --text: #eee; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            margin: 0; background: #121212; color: #eee;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow-x: hidden; padding-top: env(safe-area-inset-top);
-        }
-        header {
-            padding: 15px; background: #1f1f1f; display: flex;
-            justify-content: space-between; align-items: center;
-            border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 100;
-        }
-        .header-title { font-weight: bold; font-size: 18px; color: #fff; }
-        .grid {
-            display: grid; grid-template-columns: repeat(2, 1fr);
-            gap: 8px; padding: 8px; width: 100%;
-        }
-        .card {
-            background: #1f1f1f; border-radius: 12px; padding: 10px;
-            height: 260px; display: flex; flex-direction: column;
-            border: 1px solid #333; overflow: hidden;
-        }
-        .info { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .stock-label { display: flex; flex-direction: column; text-decoration: none; max-width: 80%; }
-        .stock-name { color: #fff; font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; width: 100%; overflow-x: hidden; padding-top: env(safe-area-inset-top); }
+        header { padding: 12px 15px; background: var(--card); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 100; }
+        .grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; width: 100%; }
+        .card { background: var(--card); border-radius: 12px; padding: 10px; width: calc(50% - 4px); height: 230px; display: flex; flex-direction: column; border: 1px solid #333; }
+        .info { display: flex; justify-content: space-between; height: 32px; overflow: hidden; margin-bottom: 5px; }
+        .stock-name { color: #fff; font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stock-symbol { font-size: 9px; color: #888; }
-        .remove-btn { color: #555; font-size: 20px; cursor: pointer; padding: 0 5px; }
-        .chart-box { flex-grow: 1; position: relative; width: 100%; }
-        .timeframe-selector { display: flex; gap: 2px; margin-top: 10px; background: #121212; padding: 2px; border-radius: 6px; }
-        .time-btn { flex: 1; border: none; background: none; color: #666; font-size: 10px; padding: 7px 0; border-radius: 4px; }
+        .chart-box { flex-grow: 1; position: relative; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; }
+        .error-msg { font-size: 10px; color: #555; text-align: center; }
+        .time-selector { display: flex; gap: 2px; margin-top: 8px; background: #121212; padding: 2px; border-radius: 6px; }
+        .time-btn { flex: 1; border: none; background: none; color: #666; font-size: 10px; padding: 6px 0; border-radius: 4px; }
         .time-btn.active { background: #333; color: #fff; font-weight: bold; }
-        
-        /* 検索モーダル */
-        .modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 200; padding: 20px;
-            display: flex; align-items: flex-start; justify-content: center;
-        }
-        .modal-content {
-            background: #1f1f1f; border-radius: 15px; padding: 20px;
-            border: 1px solid #444; width: 100%; max-width: 500px; margin-top: 50px;
-        }
-        .search-input {
-            width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #eee;
-            background: #121212; color: white; font-size: 16px; outline: none;
-        }
-        .add-btn-main { background: #eee; color: #111; border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; font-size: 13px; }
-        .candidate-item { padding: 12px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .btn-close { background: #333; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; margin-top: 15px; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; display: flex; justify-content: center; padding: 20px; }
+        .modal-content { background: var(--card); border-radius: 15px; padding: 20px; width: 100%; max-width: 400px; margin-top: 40px; height: fit-content; border: 1px solid #444; }
+        .search-input { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #555; background: #000; color: #fff; font-size: 16px; margin-bottom: 10px; outline: none; }
+        .add-btn { background: #eee; color: #000; border: none; border-radius: 5px; padding: 6px 12px; font-size: 12px; font-weight: bold; }
+        [v-cloak] { display: none !important; }
     </style>
 </head>
 <body>
-<div id="app">
+<div id="app" v-cloak>
     <header>
-        <div class="header-title">Omo Chart</div>
-        <button class="add-btn-main" @click="openSearch">＋ 検索追加</button>
+        <div style="font-weight:bold; font-size:18px;">Omo Chart</div>
+        <button class="add-btn" @click="isModalOpen = true">＋ 追加</button>
     </header>
 
     <div class="grid">
-        <div v-for="(stock, index) in stocks" :key="index" class="card">
+        <div v-for="(s, idx) in stocks" :key="idx" class="card">
             <div class="info">
-                <a :href="getYahooUrl(stock.symbol)" target="_blank" class="stock-label">
-                    <span class="stock-name">{{ stock.name }}</span>
-                    <span class="stock-symbol">{{ stock.symbol }}</span>
-                </a>
-                <div class="remove-btn" @click="removeStock(index)">×</div>
+                <div style="display:flex; flex-direction:column; max-width:80%;">
+                    <span class="stock-name">{{ s.name }}</span>
+                    <span class="stock-symbol">{{ s.symbol }}</span>
+                </div>
+                <div style="color:#555; font-size:18px;" @click="removeStock(idx)">×</div>
             </div>
             <div class="chart-box">
-                <canvas :id="'chart-' + index"></canvas>
+                <canvas :id="'c-' + idx" v-show="!s.error"></canvas>
+                <div v-if="s.error" class="error-msg">データ取得中...<br>(数秒かかる場合があります)</div>
             </div>
-            <div class="timeframe-selector">
-                <button v-for="tf in timeframes" :key="tf.id" 
-                        class="time-btn" :class="{ active: stock.range === tf.range }"
-                        @click="updateRange(index, tf.range, tf.interval)">
-                    {{ tf.label }}
-                </button>
+            <div class="time-selector">
+                <button v-for="t in tfs" :key="t.id" class="time-btn" :class="{ active: s.range === t.range }" @click="updateRange(idx, t.range, t.interval)">{{ t.label }}</button>
             </div>
         </div>
     </div>
 
     <div v-if="isModalOpen" class="modal" @click.self="isModalOpen = false">
         <div class="modal-content">
-            <input type="text" class="search-input" v-model="searchQuery" @input="onSearchInput" placeholder="銘柄名、コード、指数...">
-            <div v-if="isSearching" style="text-align:center; padding:10px; color:#888;">検索中...</div>
-            <div v-for="res in searchResults" :key="res.symbol" class="candidate-item">
-                <div style="display:flex; flex-direction:column;">
-                    <span style="color:#fff; font-weight:bold; font-size:14px;">{{ res.shortname || res.symbol }}</span>
-                    <span style="color:#888; font-size:11px;">{{ res.symbol }}</span>
-                </div>
-                <button class="add-btn-main" style="padding:5px 10px; font-size:11px;" @click="addStock(res)">追加</button>
+            <input type="text" class="search-input" v-model="query" @input="onInput" placeholder="銘柄名、またはITコード...">
+            <div v-if="query.length >= 4" style="background:#333; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:12px;">直接登録: {{query}}</div>
+                <button class="add-btn" @click="addDirect">追加</button>
             </div>
-            <button class="btn-close" @click="isModalOpen = false">キャンセル</button>
+            <div v-for="r in results" :key="r.symbol" style="padding:10px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                <div style="overflow:hidden; margin-right:10px;">
+                    <div style="color:#fff; font-size:13px; font-weight:bold; overflow:hidden; text-overflow:ellipsis;">{{ r.shortname || r.symbol }}</div>
+                    <div style="color:#888; font-size:10px;">{{ r.symbol }}</div>
+                </div>
+                <button class="add-btn" @click="addStock(r)">追加</button>
+            </div>
+            <button @click="isModalOpen = false" style="width:100%; margin-top:15px; background:none; border:none; color:#888;">閉じる</button>
         </div>
     </div>
 </div>
 
 <script>
 const { createApp, onMounted, ref, nextTick } = Vue;
-
 createApp({
     setup() {
         const isModalOpen = ref(false);
-        const searchQuery = ref('');
-        const searchResults = ref([]);
-        const isSearching = ref(false);
-        const STORAGE_KEY = 'omo_chart_v57';
-        
+        const query = ref('');
+        const results = ref([]);
         const stocks = ref([]);
-        const timeframes = [
-            { id: '1d', label: '1日', range: '1d', interval: '5m' },
-            { id: '1w', label: '1週', range: '5d', interval: '30m' },
-            { id: '1m', label: '1月', range: '1mo', interval: '1d' }
-        ];
+        const tfs = [{id:'1d',label:'1日',range:'1d',interval:'5m'},{id:'1w',label:'1週',range:'5d',interval:'30m'},{id:'1m',label:'1月',range:'1mo',interval:'1d'}];
+        
+        const save = () => localStorage.setItem('omo_v64', JSON.stringify(stocks.value.map(s=>({symbol:s.symbol, name:s.name, range:s.range, interval:s.interval}))));
 
-        const saveToStorage = () => {
-            const data = stocks.value.map(s => ({ symbol: s.symbol, name: s.name, range: s.range, interval: s.interval }));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        };
+        const render = async (idx) => {
+            const s = stocks.value[idx];
+            if (!s) return;
+            s.error = true; 
 
-        const loadFromStorage = () => {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                stocks.value = JSON.parse(saved).map(s => ({ ...s, chart: null }));
-            } else {
-                stocks.value = [
-                    { symbol: '7203.T', name: 'トヨタ自動車', range: '1d', interval: '5m', chart: null },
-                    { symbol: '^N225', name: '日経平均', range: '1d', interval: '5m', chart: null },
-                    { symbol: 'AAPL', name: 'Apple', range: '1d', interval: '5m', chart: null },
-                    { symbol: 'BTC-USD', name: 'Bitcoin', range: '1d', interval: '5m', chart: null }
-                ];
+            // 通信プロキシを複数切り替えて試行する仕組み（CORS対策）
+            const proxies = [
+                (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+                (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
+            ];
+
+            for (let proxy of proxies) {
+                try {
+                    let r = s.range, i = s.interval;
+                    // 投資信託なら強制的に1ヶ月を表示
+                    if(s.symbol.toUpperCase().startsWith('IT')) { r = '1mo'; i = '1d'; s.range = '1mo'; }
+                    
+                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${s.symbol}?range=${r}&interval=${i}`;
+                    const resp = await fetch(proxy(url));
+                    if (!resp.ok) throw new Error();
+                    const data = await resp.json();
+                    const res = data.chart.result[0];
+                    const quotes = res.indicators.quote[0].close.map(v => v).filter(v => v !== null);
+                    
+                    if (s.chart) s.chart.destroy();
+                    await nextTick();
+                    const ctx = document.getElementById('c-' + idx).getContext('2d');
+                    s.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: { 
+                            labels: quotes.map((_, i) => i), 
+                            datasets: [{ data: quotes, borderColor: quotes[quotes.length-1] >= quotes[0] ? '#4ade80' : '#f87171', borderWidth: 2, pointRadius: 0, tension: 0.1 }] 
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#2a2a2a' }, ticks: { color: '#888', font: { size: 8 }, maxTicksLimit: 4 } } } }
+                    });
+                    s.error = false;
+                    break; // 成功したらループを抜ける
+                } catch (e) {
+                    console.warn(`Proxy failed for ${s.symbol}, trying next...`);
+                }
             }
         };
 
-        const getYahooUrl = (symbol) => {
-            const code = symbol.replace('.T', '');
-            return symbol.endsWith('.T') ? `https://finance.yahoo.co.jp/quote/${code}.T` : `https://finance.yahoo.co.jp/quote/${symbol}`;
-        };
-
-        let timeout = null;
-        const onSearchInput = () => {
-            clearTimeout(timeout);
-            if (!searchQuery.value) { searchResults.value = []; return; }
-            timeout = setTimeout(async () => {
-                isSearching.value = true;
+        const onInput = () => {
+            clearTimeout(this.timer);
+            this.timer = setTimeout(async () => {
+                if (!query.value) return;
                 try {
-                    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(searchQuery.value)}&quotesCount=10`;
-                    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-                    const json = await res.json();
-                    searchResults.value = json.quotes || [];
-                } catch (e) { console.error(e); }
-                finally { isSearching.value = false; }
+                    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${query.value}`;
+                    const resp = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+                    const json = await resp.json();
+                    results.value = json.quotes || [];
+                } catch(e) {}
             }, 500);
         };
 
-        const fetchAndRender = async (index) => {
-            const stock = stocks.value[index];
-            if (!stock) return;
-            try {
-                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${stock.symbol}?range=${stock.range}&interval=${stock.interval}`;
-                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-                const json = await res.json();
-                const result = json.chart.result[0];
-                const quotes = result.indicators.quote[0].close;
-                const labels = result.timestamp.map(t => {
-                    const d = new Date(t * 1000);
-                    return stock.range === '1d' ? `${d.getHours()}:${d.getMinutes()}` : `${d.getMonth()+1}/${d.getDate()}`;
-                });
-
-                if (stock.chart) stock.chart.destroy();
-                await nextTick();
-                const ctx = document.getElementById('chart-' + index).getContext('2d');
-                stock.chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{ data: quotes, borderColor: '#ffffff', borderWidth: 2, pointRadius: 0, tension: 0.1, fill: false }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false, animation: false,
-                        plugins: { legend: { display: false } },
-                        scales: { x: { display: false }, y: { grid: { color: '#2a2a2a' }, ticks: { color: '#888', font: { size: 9 }, maxTicksLimit: 5 } } }
-                    }
-                });
-            } catch (e) { console.error(e); }
+        const addStock = (r) => {
+            stocks.value.push({ symbol: r.symbol, name: r.shortname || r.symbol, range: '1d', interval: '5m', chart: null, error: true });
+            save(); isModalOpen.value = false; query.value = '';
+            nextTick(() => render(stocks.value.length - 1));
         };
 
-        const addStock = (res) => {
-            stocks.value.push({ symbol: res.symbol, name: res.shortname || res.symbol, range: '1d', interval: '5m', chart: null });
-            saveToStorage();
-            isModalOpen.value = false;
-            searchQuery.value = '';
-            searchResults.value = [];
-            nextTick(() => fetchAndRender(stocks.value.length - 1));
+        const addDirect = () => {
+            const sym = query.value.trim().toUpperCase();
+            stocks.value.push({ symbol: sym, name: sym, range: '1mo', interval: '1d', chart: null, error: true });
+            save(); isModalOpen.value = false; query.value = '';
+            nextTick(() => render(stocks.value.length - 1));
         };
 
-        const removeStock = (n) => {
-            if (stocks.value[n].chart) stocks.value[n].chart.destroy();
-            stocks.value.splice(n, 1);
-            saveToStorage();
-            nextTick(() => stocks.value.forEach((_, i) => fetchAndRender(i)));
-        };
-
-        const updateRange = (index, range, interval) => {
-            stocks.value[index].range = range;
-            stocks.value[index].interval = interval;
-            saveToStorage();
-            fetchAndRender(index);
-        };
+        const removeStock = (idx) => { stocks.value.splice(idx, 1); save(); nextTick(() => stocks.value.forEach((_, i) => render(i))); };
+        const updateRange = (idx, r, i) => { stocks.value[idx].range = r; stocks.value[idx].interval = i; render(idx); };
 
         onMounted(() => {
-            loadFromStorage();
-            nextTick(() => stocks.value.forEach((_, i) => fetchAndRender(i)));
+            const saved = localStorage.getItem('omo_v64');
+            stocks.value = saved ? JSON.parse(saved) : [{ symbol: '^N225', name: '日経平均', range: '1d', interval: '5m' }];
+            nextTick(() => stocks.value.forEach((_, i) => render(i)));
         });
 
-        return { stocks, isModalOpen, searchQuery, searchResults, isSearching, getYahooUrl, timeframes, onSearchInput, addStock, updateRange, removeStock, openSearch: () => isModalOpen.value = true };
+        return { stocks, isModalOpen, query, results, tfs, onInput, addStock, addDirect, updateRange, removeStock };
     }
 }).mount('#app');
 </script>
